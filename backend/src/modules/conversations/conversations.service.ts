@@ -196,10 +196,27 @@ export async function updateStatus(conversationId: string, status: string, ticke
     }
   }
 
-  return prisma.conversation.update({
+  const updated = await prisma.conversation.update({
     where: { id: conversationId },
     data,
   });
+
+  // Emit socket event to update sidebar
+  try {
+    const io = getIO();
+    io.emit('conversation_updated', {
+      id: updated.id,
+      customerName: updated.customerName,
+      customerPhone: updated.customerPhone,
+      status: updated.status,
+      lastMessageAt: updated.lastMessageAt,
+      unreadCount: updated.unreadCount,
+    });
+  } catch (e) {
+    logger.warn('Socket emit failed', { error: e });
+  }
+
+  return updated;
 }
 
 export async function updateTags(conversationId: string, tagIds: string[]) {

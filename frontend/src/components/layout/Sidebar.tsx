@@ -49,7 +49,7 @@ export function Sidebar({ conversations = [], onDeleteConversation }: SidebarPro
           <img src="/logo.png" alt="Syscliente" className="w-7 h-7 rounded" />
           <h1 className="text-xl font-bold text-gray-900">Syscliente</h1>
         </div>
-        <p className="text-xs text-gray-500 mt-1">Help Desk WhatsApp</p>
+        <p className="text-xs text-gray-500 mt-1">Central de Atendimento WhatsApp</p>
       </div>
 
       {/* Nav Links */}

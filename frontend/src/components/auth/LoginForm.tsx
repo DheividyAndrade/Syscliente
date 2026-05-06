@@ -35,7 +35,7 @@ export function LoginForm() {
           <img src="/logo.png" alt="Syscliente" className="w-10 h-10 rounded" />
           <h1 className="text-2xl font-bold text-gray-900">Syscliente</h1>
         </div>
-        <p className="text-sm text-gray-500">Help Desk WhatsApp</p>
+        <p className="text-sm text-gray-500">Central de Atendimento WhatsApp</p>
       </div>
 
       <div>
