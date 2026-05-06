@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Syscliente - Conectar WhatsApp</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #eff6ff, #dbeafe); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: white; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.1); padding: 32px; text-align: center; max-width: 400px; width: 90%; }
+    h1 { color: #1e40af; margin-bottom: 8px; }
+    p { color: #6b7280; margin-bottom: 24px; font-size: 14px; }
+    img { border: 2px solid #e5e7eb; border-radius: 12px; padding: 8px; margin-bottom: 16px; }
+    .steps { text-align: left; color: #4b5563; font-size: 13px; line-height: 1.8; background: #f9fafb; border-radius: 8px; padding: 16px; }
+    .steps span { display: inline-block; width: 20px; height: 20px; background: #3b82f6; color: white; border-radius: 50%; text-align: center; line-height: 20px; font-size: 11px; margin-right: 8px; }
+    .connected { color: #059669; font-weight: 600; }
+    button { margin-top: 16px; padding: 10px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    button:hover { background: #2563eb; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #e5e7eb; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>📱 Syscliente</h1>
+    <p>Escaneie o QR code com o WhatsApp do celular</p>
+    <img id="qrImage" src="" alt="QR Code" style="width: 256px; height: 256px;" />
+    <div class="steps">
+      <div><span>1</span> Abra o WhatsApp no celular</div>
+      <div><span>2</span> Vá em <strong>Aparelhos conectados</strong></div>
+      <div><span>3</span> Toque em <strong>Conectar um aparelho</strong></div>
+      <div><span>4</span> Escaneie o QR code acima</div>
+    </div>
+    <button onclick="checkStatus()">
+      <span class="spinner" id="spinner" style="display:none"></span>
+      Verificar Conexão
+    </button>
+    <p id="status" style="margin-top: 12px; font-size: 14px;"></p>
+  </div>
+
+  <script>
+    // Load QR from API
+    async function loadQR() {
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({email:'admin@syscliente.com',password:'admin123'})
+        });
+        const { accessToken } = await res.json();
+        
+        const qrRes = await fetch('/api/whatsapp/qr', {
+          headers: {'Authorization':`Bearer ${accessToken}`}
+        });
+        const { qr } = await qrRes.json();
+        document.getElementById('qrImage').src = qr;
+        
+        // Start polling for connection
+        setInterval(async () => {
+          const statusRes = await fetch('/api/whatsapp/status', {
+            headers: {'Authorization':`Bearer ${accessToken}`}
+          });
+          const { connectionState } = await statusRes.json();
+          if (connectionState === 'connected') {
+            document.getElementById('status').innerHTML = '<span class="connected">✅ WhatsApp conectado!</span>';
+            document.getElementById('qrImage').style.opacity = '0.3';
+          }
+        }, 3000);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    
+    async function checkStatus() {
+      document.getElementById('spinner').style.display = 'inline-block';
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({email:'admin@syscliente.com',password:'admin123'})
+        });
+        const { accessToken } = await res.json();
+        const statusRes = await fetch('/api/whatsapp/status', {
+          headers: {'Authorization':`Bearer ${accessToken}`}
+        });
+        const { connectionState } = await statusRes.json();
+        document.getElementById('status').innerHTML = 
+          connectionState === 'connected' 
+            ? '<span class="connected">✅ WhatsApp conectado!</span>'
+            : '⏳ Aguardando escaneamento...';
+      } catch (err) {
+        document.getElementById('status').textContent = 'Erro ao verificar';
+      }
+      document.getElementById('spinner').style.display = 'none';
+    }
+    
+    loadQR();
+  </script>
+</body>
+</html>

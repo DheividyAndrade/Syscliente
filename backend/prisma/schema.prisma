@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ─────────────────────────────
+
+enum UserRole {
+  ADMIN
+  AGENT
+}
+
+enum ConversationStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SenderType {
+  CLIENT
+  AGENT
+  SYSTEM
+}
+
+enum ContentType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  TEMPLATE
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+// ─── Models ─────────────────────────────
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  password      String
+  role          UserRole @default(AGENT)
+  isActive      Boolean  @default(true)
+  avatarUrl     String?
+
+  // Relations
+  conversations Conversation[]  @relation("AssignedConversations")
+  messages      Message[]
+  quickReplies  QuickReply[]
+  auditLogs     AuditLog[]
+  refreshTokens RefreshToken[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Conversation {
+  id            String             @id @default(uuid())
+  customerName  String
+  customerPhone String
+  rawJid        String?
+  ticketTitle   String?
+  status        ConversationStatus @default(OPEN)
+  priority      Priority           @default(MEDIUM)
+  lastMessageAt DateTime           @default(now())
+  unreadCount   Int                @default(0)
+
+  // Relations
+  assignedToId String?
+  assignedTo   User?               @relation("AssignedConversations", fields: [assignedToId], references: [id])
+  messages     Message[]
+  tags         ConversationTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([assignedToId])
+  @@index([customerPhone])
+}
+
+model ConversationTag {
+  conversationId String
+  tagId          String
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  tag          Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, tagId])
+}
+
+model Tag {
+  id    String @id @default(uuid())
+  name  String @unique
+  color String @default("#6B7280")
+
+  conversations ConversationTag[]
+
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id             String        @id @default(uuid())
+  conversationId String
+  senderType     SenderType
+  senderId       String?
+  content        String        @db.Text
+  contentType    ContentType   @default(TEXT)
+  mediaUrl       String?       @db.Text
+  status         MessageStatus @default(SENT)
+  externalId     String?
+  readAt         DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?        @relation(fields: [senderId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([externalId])
+}
+
+model QuickReply {
+  id        String @id @default(uuid())
+  title     String
+  content   String @db.Text
+  createdById String
+
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  details    Json     @default("{}")
+
+  user User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique @db.VarChar(512)
+  userId    String
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}

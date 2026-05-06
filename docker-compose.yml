@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  evolution-api:
+    image: atendai/evolution-api:latest
+    container_name: evolution-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=sk-evo-d7f8a3b2c1e4f5a6b7c8d9e0f1a2b3c4
+      - AUTHENTICATION_EXPOSE_API_KEY=true
+      - LANGUAGE=pt-BR
+      - WEBHOOK_GLOBAL_ENABLED=false
+      - DATABASE_ENABLED=false
+      - LOG_LEVEL=INFO
+    volumes:
+      - evolution_instances:/evolution/instances
+
+volumes:
+  evolution_instances:
