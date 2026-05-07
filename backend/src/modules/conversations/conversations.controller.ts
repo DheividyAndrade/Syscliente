@@ -8,4 +8,5 @@ export {
   transferConversation,
   getHistoryByPhone,
   deleteConversation,
+  getDetailedConversations,
 } from './conversations.service';

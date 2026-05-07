@@ -181,7 +181,7 @@ export async function assignConversation(conversationId: string, agentId: string
   return updated;
 }
 
-export async function updateStatus(conversationId: string, status: string, ticketTitle?: string) {
+export async function updateStatus(conversationId: string, status: string, ticketTitle?: string, solution?: string) {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
   });
@@ -191,9 +191,8 @@ export async function updateStatus(conversationId: string, status: string, ticke
   const data: any = { status };
   if (status === 'CLOSED') {
     data.unreadCount = 0;
-    if (ticketTitle) {
-      data.ticketTitle = ticketTitle;
-    }
+    if (ticketTitle) data.ticketTitle = ticketTitle;
+    if (solution) data.solution = solution;
   }
 
   const updated = await prisma.conversation.update({
@@ -320,4 +319,76 @@ export async function deleteConversation(id: string) {
   if (!conversation) throw new NotFoundError('Conversation not found');
 
   await prisma.conversation.delete({ where: { id } });
+}
+
+export async function getDetailedConversations(targetMonth?: number | null, targetYear?: number | null) {
+  const now = new Date();
+  const month = targetMonth || now.getMonth() + 1;
+  const year = targetYear || now.getFullYear();
+
+  const startOfMonth = new Date(year, month - 1, 1);
+  const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+
+  const conversations = await prisma.conversation.findMany({
+    where: {
+      createdAt: { gte: startOfMonth, lte: endOfMonth },
+    },
+    include: {
+      assignedTo: { select: { id: true, name: true } },
+      tags: { include: { tag: true } },
+      messages: {
+        select: { senderType: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return conversations.map((conv) => {
+    // Calculate response time: time between first client message and first agent message
+    const firstClientMsg = conv.messages.find((m) => m.senderType === 'CLIENT');
+    const firstAgentMsg = conv.messages.find((m) => m.senderType === 'AGENT');
+
+    let responseTimeMinutes: number | null = null;
+    if (firstClientMsg && firstAgentMsg) {
+      responseTimeMinutes = Math.round(
+        (firstAgentMsg.createdAt.getTime() - firstClientMsg.createdAt.getTime()) / 60000
+      );
+    }
+
+    const statusMap: Record<string, string> = {
+      OPEN: 'Aberta',
+      IN_PROGRESS: 'Em atendimento',
+      CLOSED: 'Finalizada',
+    };
+
+    const priorityMap: Record<string, string> = {
+      LOW: 'Baixa',
+      MEDIUM: 'Media',
+      HIGH: 'Alta',
+    };
+
+    return {
+      id: conv.id,
+      customerName: conv.customerName,
+      customerPhone: conv.customerPhone,
+      status: conv.status,
+      statusLabel: statusMap[conv.status] || conv.status,
+      priority: conv.priority,
+      priorityLabel: priorityMap[conv.priority] || conv.priority,
+      ticketTitle: conv.ticketTitle || '',
+      solution: conv.solution || '',
+      assignedTo: conv.assignedTo,
+      tags: conv.tags.map((ct) => ({ id: ct.tag.id, name: ct.tag.name, color: ct.tag.color })),
+      messageCount: conv.messages.length,
+      responseTimeMinutes,
+      responseTimeDisplay: responseTimeMinutes != null
+        ? responseTimeMinutes < 60
+          ? `${responseTimeMinutes} min`
+          : `${Math.floor(responseTimeMinutes / 60)}h ${responseTimeMinutes % 60}min`
+        : '-',
+      createdAt: conv.createdAt,
+      closedAt: conv.status === 'CLOSED' ? conv.updatedAt : null,
+    };
+  });
 }

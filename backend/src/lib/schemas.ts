@@ -31,6 +31,7 @@ export const assignConversationSchema = z.object({
 export const updateStatusSchema = z.object({
   status: z.enum(['OPEN', 'IN_PROGRESS', 'CLOSED']),
   ticketTitle: z.string().max(200).optional(),
+  solution: z.string().max(2000).optional(),
 });
 
 export const updateTagsSchema = z.object({

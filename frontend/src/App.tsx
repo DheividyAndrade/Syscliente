@@ -6,6 +6,7 @@ import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './pages/Login';
 import { DashboardHome } from './pages/Dashboard';
 import { DashboardPage } from './pages/DashboardPage';
+import { ChamadosPage } from './pages/ChamadosPage';
 import { AdminPage } from './pages/Admin';
 import { WhatsAppSetupPage } from './pages/WhatsAppSetup';
 import { ChatView } from './pages/ChatView';
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route index element={<DashboardHome />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="whatsapp" element={<WhatsAppSetupPage />} />
+        <Route path="chamados" element={<ChamadosPage />} />
         <Route path="conversations/:id" element={<ChatView />} />
         <Route path="dashboard" element={<DashboardPage />} />
       </Route>

@@ -51,6 +51,7 @@ export function ChatView() {
   const [showTags, setShowTags] = useState(false);
   const [allTags, setAllTags] = useState<Array<{ id: string; name: string; color: string }>>([]);
   const [ticketTitle, setTicketTitle] = useState('');
+  const [ticketSolution, setTicketSolution] = useState('');
   const [history, setHistory] = useState<Array<{
     ticketTitle?: string;
     id: string;
@@ -159,15 +160,19 @@ export function ChatView() {
   };
 
   const handleClose = async () => {
-    // Show the prompt modal instead of closing directly
     setTicketTitle('');
+    setTicketSolution('');
     setShowClosePrompt(true);
   };
 
   const handleConfirmClose = async () => {
     if (!id) return;
     try {
-      await api.patch(`/conversations/${id}/status`, { status: 'CLOSED', ticketTitle: ticketTitle.trim() });
+      await api.patch(`/conversations/${id}/status`, {
+        status: 'CLOSED',
+        ticketTitle: ticketTitle.trim(),
+        solution: ticketSolution.trim(),
+      });
       toast.success('Conversa finalizada!');
       setShowClosePrompt(false);
       loadConversation();
@@ -464,11 +469,12 @@ export function ChatView() {
       {/* Close Prompt Modal */}
       {showClosePrompt && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowClosePrompt(false)}>
-          <div className="bg-white rounded-xl shadow-xl p-5 w-80 z-50" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-xl p-5 w-96 z-50" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-sm font-semibold text-gray-900 mb-2">Finalizar Ticket</h3>
             <p className="text-xs text-gray-500 mb-3">
-              Descreva o motivo/problema deste ticket para o relatorio.
+              Descreva o problema e a solucao para o relatorio.
             </p>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Problema Identificado</label>
             <input
               type="text"
               value={ticketTitle}
@@ -476,7 +482,14 @@ export function ChatView() {
               placeholder='Ex: "Erro ao acessar o portal"'
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none mb-3"
               autoFocus
-              onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmClose(); }}
+            />
+            <label className="block text-xs font-medium text-gray-700 mb-1">Solucao Implementada</label>
+            <textarea
+              value={ticketSolution}
+              onChange={(e) => setTicketSolution(e.target.value)}
+              placeholder='Ex: "Reiniciamos o servidor e restauramos o backup do banco"'
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none mb-3 resize-none"
             />
             <div className="flex gap-2 justify-end">
               <button

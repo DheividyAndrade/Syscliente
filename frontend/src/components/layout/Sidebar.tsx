@@ -5,6 +5,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useWhatsAppStatus } from '../../hooks/useWhatsAppStatus';
@@ -80,6 +81,13 @@ export function Sidebar({ conversations = [], onDeleteConversation }: SidebarPro
         >
           <BarChart3 size={18} />
           Dashboard
+        </button>
+        <button
+          onClick={() => navigate('/chamados')}
+          className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <ClipboardList size={18} />
+          Chamados
         </button>
       </nav>
 

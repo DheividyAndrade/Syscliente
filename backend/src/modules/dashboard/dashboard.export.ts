@@ -76,7 +76,7 @@ export async function generateMonthlyReport(month: number, year: number): Promis
     properties: { tabColor: { argb: '10B981' } },
   });
 
-  const ticketHeaders = ['ID', 'Cliente', 'Telefone', 'Status', 'Atendente', 'Titulo', 'Tags', 'Mensagens', 'Data Abertura', 'Ultima Mensagem'];
+  const ticketHeaders = ['ID', 'Cliente', 'Telefone', 'Status', 'Atendente', 'Titulo', 'Solucao', 'Tags', 'Mensagens', 'Data Abertura', 'Ultima Mensagem'];
   const headerRow = ticketsSheet.addRow(ticketHeaders);
   headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
   headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '3B82F6' } };
@@ -96,6 +96,7 @@ export async function generateMonthlyReport(month: number, year: number): Promis
       statusMap[conv.status] || conv.status,
       conv.assignedTo?.name || 'Nao atribuido',
       conv.ticketTitle || '-',
+      conv.solution || '-',
       conv.tags.map((ct) => ct.tag.name).join(', ') || '-',
       conv.messages.length,
       conv.createdAt.toLocaleDateString('pt-BR'),
@@ -115,11 +116,12 @@ export async function generateMonthlyReport(month: number, year: number): Promis
   ticketsSheet.getColumn(3).width = 18;
   ticketsSheet.getColumn(4).width = 16;
   ticketsSheet.getColumn(5).width = 18;
-  ticketsSheet.getColumn(6).width = 28;
-  ticketsSheet.getColumn(7).width = 22;
-  ticketsSheet.getColumn(8).width = 12;
-  ticketsSheet.getColumn(9).width = 16;
+  ticketsSheet.getColumn(6).width = 24;
+  ticketsSheet.getColumn(7).width = 28;
+  ticketsSheet.getColumn(8).width = 22;
+  ticketsSheet.getColumn(9).width = 12;
   ticketsSheet.getColumn(10).width = 16;
+  ticketsSheet.getColumn(11).width = 16;
 
   // ─── Sheet 3: Atendentes ───
   const agentSheet = workbook.addWorksheet('Atendentes', {

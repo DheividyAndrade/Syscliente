@@ -45,6 +45,18 @@ router.get('/history/:phone', async (req: Request, res: Response, next: NextFunc
   }
 });
 
+// Get detailed conversations with response time (must be before /:id)
+router.get('/detailed', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const month = req.query.month ? parseInt(req.query.month as string) : null;
+    const year = req.query.year ? parseInt(req.query.year as string) : null;
+    const result = await conversationsService.getDetailedConversations(month, year);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get conversation with messages
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -75,7 +87,8 @@ router.patch('/:id/status', validate(updateStatusSchema), async (req: Request, r
     const conversation = await conversationsService.updateStatus(
       req.params.id as string,
       req.body.status,
-      req.body.ticketTitle
+      req.body.ticketTitle,
+      req.body.solution
     );
     res.json(conversation);
   } catch (error) {

@@ -74,6 +74,7 @@ model Conversation {
   customerPhone String
   rawJid        String?
   ticketTitle   String?
+  solution      String?         @db.Text
   status        ConversationStatus @default(OPEN)
   priority      Priority           @default(MEDIUM)
   lastMessageAt DateTime           @default(now())
