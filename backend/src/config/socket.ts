@@ -1,8 +1,22 @@
 import { Server as HttpServer } from 'http';
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import { env } from './env';
+import jwt from 'jsonwebtoken';
+import { logger } from '../lib/logger';
 
 let io: Server;
+
+interface JwtPayload {
+  userId: string;
+  email: string;
+  role: string;
+}
+
+declare module 'socket.io' {
+  interface Socket {
+    user?: JwtPayload;
+  }
+}
 
 export function initSocket(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
@@ -15,12 +29,29 @@ export function initSocket(httpServer: HttpServer): Server {
     pingInterval: 25000,
   });
 
+  // JWT Authentication middleware
+  io.use((socket: Socket, next) => {
+    const token = socket.handshake.auth.token || socket.handshake.query.token;
+    if (!token) {
+      logger.warn('Socket connection rejected: no token', { socketId: socket.id });
+      return next(new Error('Authentication required'));
+    }
+
+    try {
+      const decoded = jwt.verify(token as string, env.JWT_ACCESS_SECRET) as JwtPayload;
+      socket.user = decoded;
+      next();
+    } catch {
+      logger.warn('Socket connection rejected: invalid token', { socketId: socket.id });
+      next(new Error('Invalid token'));
+    }
+  });
+
   io.on('connection', (socket) => {
-    console.log(`[Socket] Client connected: ${socket.id}`);
+    logger.info(`Socket connected: ${socket.id} (user: ${socket.user?.email})`);
 
     socket.on('join:conversation', (conversationId: string) => {
       socket.join(`conversation:${conversationId}`);
-      console.log(`[Socket] ${socket.id} joined conversation:${conversationId}`);
     });
 
     socket.on('leave:conversation', (conversationId: string) => {
@@ -28,7 +59,7 @@ export function initSocket(httpServer: HttpServer): Server {
     });
 
     socket.on('disconnect', () => {
-      console.log(`[Socket] Client disconnected: ${socket.id}`);
+      logger.info(`Socket disconnected: ${socket.id}`);
     });
   });
 

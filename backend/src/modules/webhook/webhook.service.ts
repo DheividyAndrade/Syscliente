@@ -130,7 +130,6 @@ export async function processWebhookEvent(event: WebhookEvent) {
     }
 
     logger.info('Webhook processed', {
-      phone,
       conversationId: result.conversation.id,
       messageId: result.message.id,
     });

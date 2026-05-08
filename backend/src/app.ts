@@ -10,6 +10,8 @@ import { env } from './config/env';
 import { initSocket } from './config/socket';
 import { startWhatsApp } from './lib/whatsapp';
 import { errorHandler } from './middleware/errorHandler';
+import { authenticate } from './middleware/auth';
+import { authenticateMedia } from './middleware/mediaAuth';
 import { logger } from './lib/logger';
 
 // Route modules
@@ -21,13 +23,26 @@ import messageRoutes from './modules/messages/messages.routes';
 import webhookRoutes from './modules/webhook/webhook.routes';
 import whatsappRoutes from './modules/webhook/whatsapp.routes';
 import tagRoutes from './modules/tags/tags.routes';
+import ignoredContactsRoutes from './modules/ignoredContacts/ignoredContacts.routes';
 // import quickReplyRoutes from './modules/quickReplies/quickReplies.routes';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
 
 const app = express();
 
 // ─── Security & parsing middlewares ───
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      mediaSrc: ["'self'"],
+      connectSrc: ["'self'", "ws:", "wss:"],
+      fontSrc: ["'self'"],
+    },
+  },
+}));
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -43,8 +58,20 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ─── Static media files ───
-app.use('/media', express.static(path.resolve(__dirname, '../media'), {
+// ─── Static media files (authenticated) ───
+app.use('/media', authenticateMedia, (req, res, next) => {
+  const ext = req.path.split('.').pop()?.toLowerCase();
+  const mimeMap: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp',
+    mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
+    ogg: 'audio/ogg', mp3: 'audio/mpeg', wav: 'audio/wav', opus: 'audio/ogg',
+    pdf: 'application/pdf',
+  };
+  if (ext && mimeMap[ext]) {
+    res.setHeader('Content-Type', mimeMap[ext]);
+  }
+  next();
+}, express.static(path.resolve(__dirname, '../media'), {
   maxAge: '7d',
   immutable: true,
 }));
@@ -77,6 +104,7 @@ app.use('/api', messageRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/tags', tagRoutes);
+app.use('/api/ignored-contacts', ignoredContactsRoutes);
 // app.use('/api/quick-replies', quickReplyRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 

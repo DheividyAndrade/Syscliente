@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
-import { UserPlus, Trash2, Shield, ShieldCheck } from 'lucide-react';
+import { UserPlus, Trash2, Shield, ShieldCheck, Ban, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface User {
@@ -15,12 +15,22 @@ interface User {
   createdAt: string;
 }
 
+interface IgnoredContact {
+  id: string;
+  phone: string;
+  label?: string;
+  createdBy: { name: string };
+  createdAt: string;
+}
+
 export function AdminPage() {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
+  const [ignoredContacts, setIgnoredContacts] = useState<IgnoredContact[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'AGENT' as 'ADMIN' | 'AGENT' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newIgnored, setNewIgnored] = useState({ phone: '', label: '' });
 
   const loadUsers = async () => {
     try {
@@ -31,8 +41,16 @@ export function AdminPage() {
     }
   };
 
+  const loadIgnored = async () => {
+    try {
+      const { data } = await api.get('/ignored-contacts');
+      setIgnoredContacts(data);
+    } catch { /* admin only */ }
+  };
+
   useEffect(() => {
     loadUsers();
+    loadIgnored();
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -59,6 +77,28 @@ export function AdminPage() {
       loadUsers();
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Erro ao remover usuário');
+    }
+  };
+
+  const handleAddIgnored = async () => {
+    if (!newIgnored.phone.trim()) return;
+    try {
+      await api.post('/ignored-contacts', { phone: newIgnored.phone.trim(), label: newIgnored.label.trim() || undefined });
+      toast.success('Contato adicionado a lista de ignorados');
+      setNewIgnored({ phone: '', label: '' });
+      loadIgnored();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Erro ao adicionar');
+    }
+  };
+
+  const handleRemoveIgnored = async (id: string) => {
+    try {
+      await api.delete(`/ignored-contacts/${id}`);
+      toast.success('Removido da lista de ignorados');
+      loadIgnored();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Erro ao remover');
     }
   };
 
@@ -189,6 +229,84 @@ export function AdminPage() {
           </button>
         </form>
       </Modal>
+
+      {/* Ignored Contacts */}
+      <div className="mt-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Ban size={20} className="text-red-500" />
+          <h3 className="text-lg font-semibold text-gray-900">Contatos Ignorados</h3>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          Mensagens desses numeros serao descartadas automaticamente e nao criarao conversas.
+          <br />
+          <strong className="text-amber-600">Dica:</strong> use o botao "Bloquear" no cabecalho do chat para bloquear o contato pelo numero exato do WhatsApp.
+        </p>
+
+        {/* Add form */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={newIgnored.phone}
+              onChange={(e) => setNewIgnored({ ...newIgnored, phone: e.target.value })}
+              placeholder="Número (ex: 5582999999999)"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddIgnored(); }}
+            />
+            <input
+              type="text"
+              value={newIgnored.label}
+              onChange={(e) => setNewIgnored({ ...newIgnored, label: e.target.value })}
+              placeholder="Motivo (opcional)"
+              className="w-40 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddIgnored(); }}
+            />
+            <button
+              onClick={handleAddIgnored}
+              className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <Plus size={16} />
+              Adicionar
+            </button>
+          </div>
+        </div>
+
+        {/* Ignored list */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          {ignoredContacts.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">Nenhum contato ignorado</p>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Telefone</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Motivo</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Adicionado por</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {ignoredContacts.map((c) => (
+                  <tr key={c.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-mono text-gray-900">{c.phone}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{c.label || '-'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-400">{c.createdBy?.name}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleRemoveIgnored(c.id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                        title="Remover"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

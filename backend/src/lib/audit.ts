@@ -20,6 +20,6 @@ export async function createAuditLog(params: {
       },
     });
   } catch (error) {
-    logger.error('Failed to create audit log', { error, params });
+    logger.error('Failed to create audit log', { error });
   }
 }

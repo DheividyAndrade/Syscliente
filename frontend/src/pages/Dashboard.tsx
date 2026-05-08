@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, ArrowLeft } from 'lucide-react';
 
 export function DashboardHome() {
   return (
@@ -9,10 +9,10 @@ export function DashboardHome() {
           <MessageSquare className="text-primary-600" size={36} />
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">
-          Bem-vindo ao Syscliente
+          Selecione uma conversa
         </h2>
         <p className="text-gray-500 max-w-md">
-          Selecione uma conversa na barra lateral para começar o atendimento.
+          Clique em uma conversa na barra lateral para iniciar o atendimento.
         </p>
       </div>
     </div>

@@ -7,6 +7,7 @@ import fs from 'fs';
 import prisma from '../config/prisma';
 import { getIO } from '../config/socket';
 import { logger } from './logger';
+import { isPhoneIgnored } from '../modules/ignoredContacts/ignoredContacts.service';
 
 const AUTH_DIR = path.resolve(__dirname, '../../.baileys-auth');
 const MEDIA_DIR = path.resolve(__dirname, '../../media');
@@ -56,11 +57,9 @@ async function processIncomingMessage(msg: any) {
       return;
     }
 
-    // Log raw key to debug JID format
-    logger.info('Incoming message raw key', {
-      remoteJid: msg.key?.remoteJid,
-      pushName: msg.pushName,
-      messageKeys: Object.keys(msg.message || {}),
+    // Log only metadata, not full JID
+    logger.info('Incoming message', {
+      hasMedia: Object.keys(msg.message || {}).length > 0,
       id: msg.key?.id,
     });
 
@@ -80,6 +79,12 @@ async function processIncomingMessage(msg: any) {
     } else if (msg.message?.imageMessage) {
       content = msg.message.imageMessage.caption || '\u{1F4F7} Imagem';
       contentType = 'IMAGE';
+    } else if (msg.message?.audioMessage) {
+      content = '\u{1F3B5} Audio';
+      contentType = 'AUDIO';
+    } else if (msg.message?.videoMessage) {
+      content = msg.message.videoMessage.caption || '\u{1F3AC} Video';
+      contentType = 'VIDEO';
     } else if (msg.message?.documentMessage) {
       content = msg.message.documentMessage.title || '\u{1F4CE} Documento';
       contentType = 'DOCUMENT';
@@ -87,59 +92,43 @@ async function processIncomingMessage(msg: any) {
 
     if (!phone || !content) return;
 
-    // Download and save media if present
-    if (contentType === 'IMAGE' && msg.message?.imageMessage) {
-      try {
-        const stream = await downloadContentFromMessage(
-          msg.message.imageMessage,
-          'image',
-          {}
-        );
-        const chunks: Buffer[] = [];
-        for await (const chunk of stream) {
-          chunks.push(chunk);
+    // Download and save media
+    if (['IMAGE', 'AUDIO', 'VIDEO', 'DOCUMENT'].includes(contentType)) {
+      const mediaMsg = msg.message?.imageMessage || msg.message?.audioMessage || msg.message?.videoMessage || msg.message?.documentMessage;
+      const mediaType = contentType === 'IMAGE' ? 'image' : contentType === 'AUDIO' ? 'audio' : contentType === 'VIDEO' ? 'video' : 'document';
+      if (mediaMsg) {
+        try {
+          const stream = await downloadContentFromMessage(mediaMsg, mediaType as any, {});
+          const chunks: Buffer[] = [];
+          for await (const chunk of stream) { chunks.push(chunk); }
+          const buffer = Buffer.concat(chunks);
+          // Determine extension
+          let ext = 'bin';
+          if (mediaMsg.fileName) {
+            ext = mediaMsg.fileName.split('.').pop() || 'bin';
+          } else if (mediaMsg.mimetype) {
+            ext = mediaMsg.mimetype.split('/')[1]?.split(';')[0] || 'bin';
+          } else {
+            ext = mediaType === 'audio' ? 'ogg' : mediaType === 'video' ? 'mp4' : mediaType === 'image' ? 'jpg' : 'bin';
+          }
+          const fileId = externalId || msg.key.id || 'media';
+          const filename = `${fileId}.${ext}`;
+          const filepath = path.join(MEDIA_DIR, filename);
+          if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true });
+          fs.writeFileSync(filepath, buffer);
+          mediaUrl = `/media/${filename}`;
+          logger.info(`${contentType} saved`, { filename, size: buffer.length, ext });
+        } catch (err: any) {
+          logger.warn(`${contentType} download failed`, { error: err?.message });
         }
-        const buffer = Buffer.concat(chunks);
-
-        const ext = msg.message.imageMessage.mimetype?.split('/')[1] || 'jpg';
-        const filename = `${externalId || msg.key.id || 'img'}.${ext}`;
-        const filepath = path.join(MEDIA_DIR, filename);
-
-        if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true });
-        fs.writeFileSync(filepath, buffer);
-
-        mediaUrl = `/media/${filename}`;
-        logger.info('Media saved', { filename, size: buffer.length });
-      } catch (mediaErr: any) {
-        mediaUrl = msg.message.imageMessage.url || null;
-        logger.warn('Media download failed, using CDN URL', { error: mediaErr?.message || mediaErr });
       }
-    } else if (contentType === 'DOCUMENT' && msg.message?.documentMessage) {
-      try {
-        const stream = await downloadContentFromMessage(
-          msg.message.documentMessage,
-          'document',
-          {}
-        );
-        const chunks: Buffer[] = [];
-        for await (const chunk of stream) {
-          chunks.push(chunk);
-        }
-        const buffer = Buffer.concat(chunks);
+    }
 
-        const ext = msg.message.documentMessage.mimetype?.split('/')[1] || 'bin';
-        const filename = `${externalId || msg.key.id || 'doc'}.${ext}`;
-        const filepath = path.join(MEDIA_DIR, filename);
-
-        if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true });
-        fs.writeFileSync(filepath, buffer);
-
-        mediaUrl = `/media/${filename}`;
-        logger.info('Document saved', { filename, size: buffer.length });
-      } catch (mediaErr: any) {
-        mediaUrl = msg.message.documentMessage.url || null;
-        logger.warn('Document download failed', { error: mediaErr?.message || mediaErr });
-      }
+    // Check if phone is in ignored contacts list
+    const ignored = await isPhoneIgnored(phone, customerName, rawJid);
+    if (ignored) {
+      logger.info(`[BLOCKED] Mensagem ignorada: ${phone.substring(0, 6)}***`);
+      return;
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -204,7 +193,6 @@ async function processIncomingMessage(msg: any) {
     }
 
     logger.info('WhatsApp message processed', {
-      phone,
       conversationId: result.conversation.id,
     });
   } catch (error) {
@@ -361,7 +349,6 @@ export async function sendWhatsAppText(number: string, text: string): Promise<{ 
     }
 
     logger.info('WhatsApp message sent', {
-      to: jid,
       messageId: result.key.id,
       status: result.status || 'unknown',
     });

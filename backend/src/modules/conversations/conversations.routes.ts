@@ -38,7 +38,7 @@ router.post('/', validate(createConversationSchema), async (req: Request, res: R
 // Get conversation history by phone (must be before /:id)
 router.get('/history/:phone', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const history = await conversationsService.getHistoryByPhone(req.params.phone as string);
+    const history = await conversationsService.getHistoryByPhone(req.params.phone as string, req.user!.role);
     res.json(history);
   } catch (error) {
     next(error);
@@ -60,7 +60,7 @@ router.get('/detailed', async (req: Request, res: Response, next: NextFunction) 
 // Get conversation with messages
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const conversation = await conversationsService.getConversation(req.params.id as string);
+    const conversation = await conversationsService.getConversation(req.params.id as string, req.user!.userId, req.user!.role);
     res.json(conversation);
   } catch (error) {
     next(error);

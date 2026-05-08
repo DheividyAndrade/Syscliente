@@ -49,7 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data);
     } catch {
       localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
     } finally {
       setIsLoading(false);
@@ -77,7 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ignore
     } finally {
       localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       setUser(null);
     }

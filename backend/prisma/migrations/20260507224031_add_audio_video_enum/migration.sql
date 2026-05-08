@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `message` MODIFY `contentType` ENUM('TEXT', 'IMAGE', 'AUDIO', 'VIDEO', 'DOCUMENT', 'TEMPLATE') NOT NULL DEFAULT 'TEXT';

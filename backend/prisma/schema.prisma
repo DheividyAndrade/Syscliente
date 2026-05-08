@@ -35,6 +35,8 @@ enum SenderType {
 enum ContentType {
   TEXT
   IMAGE
+  AUDIO
+  VIDEO
   DOCUMENT
   TEMPLATE
 }
@@ -56,6 +58,8 @@ model User {
   role          UserRole @default(AGENT)
   isActive      Boolean  @default(true)
   avatarUrl     String?
+  failedLoginAttempts Int @default(0)
+  lockedUntil   DateTime?
 
   // Relations
   conversations Conversation[]  @relation("AssignedConversations")
@@ -63,6 +67,7 @@ model User {
   quickReplies  QuickReply[]
   auditLogs     AuditLog[]
   refreshTokens RefreshToken[]
+  ignoredContacts IgnoredContact[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -176,4 +181,16 @@ model RefreshToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model IgnoredContact {
+  id        String   @id @default(uuid())
+  phone     String
+  contactName String?
+  label     String?
+  createdById String
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 }

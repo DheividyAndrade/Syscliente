@@ -7,7 +7,7 @@ import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { RefreshCw, UserPlus, ArrowRightLeft, User, CheckCircle, RotateCcw, History, Tag, Plus, X } from 'lucide-react';
+import { RefreshCw, UserPlus, ArrowRightLeft, User, CheckCircle, RotateCcw, History, Tag, Plus, X, Ban } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -52,6 +52,8 @@ export function ChatView() {
   const [allTags, setAllTags] = useState<Array<{ id: string; name: string; color: string }>>([]);
   const [ticketTitle, setTicketTitle] = useState('');
   const [ticketSolution, setTicketSolution] = useState('');
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockedId, setBlockedId] = useState<string | null>(null);
   const [history, setHistory] = useState<Array<{
     ticketTitle?: string;
     id: string;
@@ -78,6 +80,12 @@ export function ChatView() {
       const msgs = data.messages || [];
       setMessages(msgs);
       msgs.forEach((m: Message) => seenIds.current.add(m.id));
+      // Check if this phone is blocked
+      try {
+        const { data: blocked } = await api.get(`/ignored-contacts/check/${encodeURIComponent(data.customerPhone)}`);
+        setIsBlocked(blocked.blocked);
+        setBlockedId(blocked.id || null);
+      } catch { /* ignore */ }
     } catch {
       toast.error('Erro ao carregar conversa');
     } finally {
@@ -225,6 +233,34 @@ export function ChatView() {
     } catch { /* ignore */ }
   };
 
+  const handleBlockContact = async () => {
+    if (!conversation) return;
+    try {
+      const { data } = await api.post('/ignored-contacts', {
+        phone: conversation.customerPhone,
+        contactName: conversation.customerName,
+        label: `Bloqueado via chat`,
+      });
+      toast.success(`Contato ${conversation.customerName} bloqueado!`);
+      setIsBlocked(true);
+      setBlockedId(data.id);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Erro ao bloquear');
+    }
+  };
+
+  const handleUnblockContact = async () => {
+    if (!blockedId) return;
+    try {
+      await api.delete(`/ignored-contacts/${blockedId}`);
+      toast.success('Contato desbloqueado!');
+      setIsBlocked(false);
+      setBlockedId(null);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Erro ao desbloquear');
+    }
+  };
+
   const handleSend = async (content: string) => {
     if (!id || sending) return;
     setSending(true);
@@ -284,7 +320,40 @@ export function ChatView() {
             <h2 className="text-base font-semibold text-gray-900">{conversation.customerName}</h2>
             <History size={14} className="text-gray-400" />
           </button>
-          <p className="text-xs text-gray-500">{conversation.customerPhone}</p>
+          <p className="text-xs text-gray-500">
+            {conversation.customerPhone}
+            {user?.role === 'ADMIN' && (
+              isBlocked ? (
+                <>
+                  <span className="ml-2 inline-flex items-center gap-0.5 text-red-600 font-medium">
+                    <Ban size={11} />
+                    <span className="text-[10px]">Bloqueado</span>
+                  </span>
+                  <button
+                    onClick={handleUnblockContact}
+                    className="ml-2 text-[10px] text-gray-400 hover:text-green-600 underline transition-colors"
+                  >
+                    Desbloquear
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleBlockContact}
+                  className="ml-2 text-gray-400 hover:text-red-500 inline-flex items-center gap-0.5 transition-colors"
+                  title="Bloquear este contato"
+                >
+                  <Ban size={12} />
+                  <span className="text-[10px]">Bloquear</span>
+                </button>
+              )
+            )}
+            {user?.role !== 'ADMIN' && isBlocked && (
+              <span className="ml-2 inline-flex items-center gap-0.5 text-red-600 font-medium">
+                <Ban size={11} />
+                <span className="text-[10px]">Bloqueado</span>
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {conversation.tags?.map((tag) => (

@@ -2,14 +2,19 @@ import { z } from 'zod';
 
 // Auth schemas
 export const loginSchema = z.object({
-  email: z.string().email('Invalid email format'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email('Email invalido'),
+  password: z.string().min(1, 'Senha obrigatoria'),
 });
 
 export const registerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email format'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  email: z.string().email('Email invalido'),
+  password: z.string()
+    .min(8, 'Senha deve ter pelo menos 8 caracteres')
+    .regex(/[A-Z]/, 'Senha deve conter pelo menos uma letra maiuscula')
+    .regex(/[a-z]/, 'Senha deve conter pelo menos uma letra minuscula')
+    .regex(/[0-9]/, 'Senha deve conter pelo menos um numero')
+    .regex(/[^A-Za-z0-9]/, 'Senha deve conter pelo menos um caractere especial'),
   role: z.enum(['ADMIN', 'AGENT']).optional(),
 });
 
@@ -54,9 +59,14 @@ export const sendTemplateSchema = z.object({
 
 // User schemas
 export const createUserSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-  password: z.string().min(6),
+  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  email: z.string().email('Email invalido'),
+  password: z.string()
+    .min(8, 'Senha deve ter pelo menos 8 caracteres')
+    .regex(/[A-Z]/, 'Senha deve conter pelo menos uma letra maiuscula')
+    .regex(/[a-z]/, 'Senha deve conter pelo menos uma letra minuscula')
+    .regex(/[0-9]/, 'Senha deve conter pelo menos um numero')
+    .regex(/[^A-Za-z0-9]/, 'Senha deve conter pelo menos um caractere especial'),
   role: z.enum(['ADMIN', 'AGENT']),
 });
 

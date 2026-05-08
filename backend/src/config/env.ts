@@ -9,8 +9,20 @@ export const env = {
 
   DATABASE_URL: process.env.DATABASE_URL!,
 
-  JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'fallback-access-secret',
-  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret',
+  JWT_ACCESS_SECRET: (() => {
+    const secret = process.env.JWT_ACCESS_SECRET;
+    if (!secret || secret.length < 32) {
+      throw new Error('JWT_ACCESS_SECRET must be at least 32 characters');
+    }
+    return secret;
+  })(),
+  JWT_REFRESH_SECRET: (() => {
+    const secret = process.env.JWT_REFRESH_SECRET;
+    if (!secret || secret.length < 32) {
+      throw new Error('JWT_REFRESH_SECRET must be at least 32 characters');
+    }
+    return secret;
+  })(),
   JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
 

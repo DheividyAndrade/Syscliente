@@ -54,7 +54,9 @@ router.get(
       const result = await messagesService.getMessages(
         req.params.conversationId as string,
         cursor,
-        limit
+        limit,
+        req.user!.userId,
+        req.user!.role
       );
       res.json(result);
     } catch (error) {

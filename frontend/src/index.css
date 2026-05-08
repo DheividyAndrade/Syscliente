@@ -33,11 +33,14 @@ html, body, #root {
 @layer components {
   .chat-bubble-agent {
     @apply bg-primary-500 text-white rounded-2xl rounded-br-md px-4 py-2 max-w-[75%] self-end;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   }
   .chat-bubble-client {
     @apply bg-gray-100 text-gray-900 rounded-2xl rounded-bl-md px-4 py-2 max-w-[75%] self-start;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   }
   .chat-bubble-system {
     @apply bg-gray-200 text-gray-500 text-xs rounded-lg px-3 py-1 self-center italic;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   }
 }

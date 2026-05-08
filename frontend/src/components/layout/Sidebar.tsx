@@ -60,7 +60,13 @@ export function Sidebar({ conversations = [], onDeleteConversation }: SidebarPro
           onClick={() => navigate('/whatsapp')}
         />
         <button
-          onClick={() => navigate('/')}
+          onClick={() => {
+            if (conversations.length > 0) {
+              navigate(`/conversations/${conversations[0].id}`);
+            } else {
+              navigate('/');
+            }
+          }}
           className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <MessageSquare size={18} />
@@ -103,20 +109,47 @@ export function Sidebar({ conversations = [], onDeleteConversation }: SidebarPro
             </p>
           ) : (
             conversations.map((conv) => (
-              <div key={conv.id} className="relative group">
+              <div key={conv.id} className="group">
                 <button
                   onClick={() => navigate(`/conversations/${conv.id}`)}
                   className="w-full text-left px-3 py-2.5 hover:bg-gray-50 rounded-lg mb-1 transition-colors"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900 truncate">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-sm font-medium text-gray-900 truncate flex-1">
                       {conv.customerName}
                     </span>
-                    {conv.unreadCount > 0 && (
-                      <span className="bg-primary-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                        {conv.unreadCount}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {/* Delete button - visible on hover */}
+                      {deletingId !== conv.id ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeletingId(conv.id); }}
+                          className="p-0.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                          title="Deletar conversa"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1 bg-white shadow-md rounded px-1.5 py-0.5 z-10" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => { onDeleteConversation?.(conv.id); setDeletingId(null); }}
+                            className="text-[10px] text-red-600 font-medium hover:underline"
+                          >
+                            Deletar
+                          </button>
+                          <button
+                            onClick={() => setDeletingId(null)}
+                            className="text-[10px] text-gray-400 hover:underline"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      )}
+                      {conv.unreadCount > 0 && (
+                        <span className="bg-primary-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                          {conv.unreadCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <div className="flex items-center gap-1.5">
@@ -135,32 +168,6 @@ export function Sidebar({ conversations = [], onDeleteConversation }: SidebarPro
                     </span>
                   </div>
                 </button>
-
-                {/* Delete button - visible on hover */}
-                {deletingId !== conv.id ? (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeletingId(conv.id); }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                    title="Deletar conversa"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                ) : (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-white shadow-md rounded-lg px-2 py-1 z-10" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => { onDeleteConversation?.(conv.id); setDeletingId(null); }}
-                      className="text-xs text-red-600 font-medium hover:underline px-1"
-                    >
-                      Deletar
-                    </button>
-                    <button
-                      onClick={() => setDeletingId(null)}
-                      className="text-xs text-gray-400 hover:underline px-1"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                )}
               </div>
             ))
           )}

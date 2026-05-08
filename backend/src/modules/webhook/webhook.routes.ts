@@ -15,8 +15,6 @@ router.post('/whatsapp', async (req: Request, res: Response, next: NextFunction)
 
     const event = req.body;
 
-    console.log('[Webhook] Event received:', JSON.stringify(event).substring(0, 200));
-
     await webhookService.processWebhookEvent(event);
 
     res.status(200).json({ received: true });

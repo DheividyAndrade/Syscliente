@@ -12,13 +12,12 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
 
   logger.error('Unhandled error', {
     message: err.message,
-    stack: err.stack,
     path: req.path,
     method: req.method,
   });
 
   return res.status(500).json({
-    error: 'Internal server error',
+    error: 'Erro interno do servidor',
     statusCode: 500,
   });
 }

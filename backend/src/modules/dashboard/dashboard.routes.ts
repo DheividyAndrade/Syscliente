@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../../middleware/auth';
+import { authorize } from '../../middleware/rbac';
 import * as dashboardService from './dashboard.service';
 import * as exportService from './dashboard.export';
 
@@ -18,7 +19,7 @@ router.get('/stats', async (req: Request, res: Response, next: NextFunction) => 
   }
 });
 
-router.get('/export', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/export', authorize('ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const month = req.query.month ? parseInt(req.query.month as string) : new Date().getMonth() + 1;
     const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();

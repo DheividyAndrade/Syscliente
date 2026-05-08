@@ -1,7 +1,7 @@
 import prisma from '../../config/prisma';
 import { getIO } from '../../config/socket';
 import { createAuditLog } from '../../lib/audit';
-import { AppError, NotFoundError } from '../../lib/errors';
+import { AppError, NotFoundError, ForbiddenError } from '../../lib/errors';
 import { logger } from '../../lib/logger';
 import { Prisma } from '@prisma/client';
 
@@ -82,7 +82,7 @@ export async function listConversations(query: {
   };
 }
 
-export async function getConversation(id: string) {
+export async function getConversation(id: string, userId?: string, userRole?: string) {
   const conversation = await prisma.conversation.findUnique({
     where: { id },
     include: {
@@ -108,13 +108,16 @@ export async function getConversation(id: string) {
     throw new NotFoundError('Conversation not found');
   }
 
+  // IDOR check: agent can only read conversations assigned to them
+  if (userRole !== 'ADMIN' && conversation.assignedToId && conversation.assignedToId !== userId) {
+    throw new ForbiddenError('Voce nao tem permissao para acessar esta conversa');
+  }
+
   return {
     ...conversation,
     tags: conversation.tags.map((ct) => ({ id: ct.tag.id, name: ct.tag.name, color: ct.tag.color })),
     messages: conversation.messages.reverse(),
   };
-
-  return conversation;
 }
 
 export async function createConversation(data: {
@@ -288,7 +291,12 @@ export async function transferConversation(
   return updated;
 }
 
-export async function getHistoryByPhone(phone: string) {
+export async function getHistoryByPhone(phone: string, userRole?: string) {
+  // Only admins can look up history by phone
+  if (userRole !== 'ADMIN') {
+    throw new ForbiddenError('Apenas administradores podem acessar historico por telefone');
+  }
+
   const conversations = await prisma.conversation.findMany({
     where: { customerPhone: phone },
     include: {

@@ -58,17 +58,46 @@ export async function register(input: RegisterInput) {
 export async function login(input: LoginInput, res: Response) {
   const user = await prisma.user.findUnique({ where: { email: input.email } });
   if (!user) {
-    throw new UnauthorizedError('Invalid email or password');
+    throw new UnauthorizedError('Email ou senha invalidos');
   }
 
   if (!user.isActive) {
-    throw new UnauthorizedError('Account is deactivated');
+    throw new UnauthorizedError('Conta desativada');
+  }
+
+  // Check if account is locked
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const remainingMinutes = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+    throw new UnauthorizedError(`Conta bloqueada. Tente novamente em ${remainingMinutes} minutos.`);
   }
 
   const valid = await bcrypt.compare(input.password, user.password);
   if (!valid) {
-    throw new UnauthorizedError('Invalid email or password');
+    const attempts = user.failedLoginAttempts + 1;
+    const LOCK_THRESHOLD = 5;
+    const LOCK_DURATION_MINUTES = 15;
+
+    if (attempts >= LOCK_THRESHOLD) {
+      const lockedUntil = new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: attempts, lockedUntil },
+      });
+      throw new UnauthorizedError(`Conta bloqueada por ${LOCK_DURATION_MINUTES} minutos. Muitas tentativas invalidas.`);
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginAttempts: attempts },
+    });
+    throw new UnauthorizedError('Email ou senha invalidos');
   }
+
+  // Reset on successful login
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { failedLoginAttempts: 0, lockedUntil: null },
+  });
 
   const { accessToken, refreshToken } = await generateTokens(user.id, user.email, user.role);
 

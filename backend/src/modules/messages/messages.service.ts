@@ -2,7 +2,7 @@ import prisma from '../../config/prisma';
 import { getIO } from '../../config/socket';
 import { sendWhatsAppText } from '../../lib/whatsapp';
 import { createAuditLog } from '../../lib/audit';
-import { AppError, NotFoundError } from '../../lib/errors';
+import { AppError, NotFoundError, ForbiddenError } from '../../lib/errors';
 import { logger } from '../../lib/logger';
 
 export async function sendMessage(
@@ -46,8 +46,6 @@ export async function sendMessage(
   } catch (error) {
     logger.error('Failed to send WhatsApp message', {
       conversationId,
-      phone: conversation.customerPhone,
-      rawJid: conversation.rawJid,
       error,
     });
     messageStatus = 'FAILED';
@@ -92,7 +90,7 @@ export async function sendMessage(
     action: 'MESSAGE_SENT',
     entityType: 'Message',
     entityId: message.id,
-    details: { conversationId, content: data.content.substring(0, 100) },
+    details: { conversationId },
   });
 
   return message;
@@ -117,7 +115,17 @@ export async function sendTemplate(
   });
 }
 
-export async function getMessages(conversationId: string, cursor?: string, limit = 50) {
+export async function getMessages(conversationId: string, cursor?: string, limit = 50, userId?: string, userRole?: string) {
+  // IDOR check
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { assignedToId: true },
+  });
+  if (!conversation) throw new NotFoundError('Conversation not found');
+  if (userRole !== 'ADMIN' && conversation.assignedToId && conversation.assignedToId !== userId) {
+    throw new ForbiddenError('Voce nao tem permissao para acessar esta conversa');
+  }
+
   const where: any = { conversationId };
   if (cursor) {
     where.createdAt = { lt: new Date(cursor) };

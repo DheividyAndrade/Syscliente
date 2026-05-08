@@ -6,8 +6,8 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding database...');
 
-  const adminPassword = await bcrypt.hash('admin123', 12);
-  const agentPassword = await bcrypt.hash('agent123', 12);
+  const adminPassword = await bcrypt.hash('Admin@123', 12);
+  const agentPassword = await bcrypt.hash('Agente@123', 12);
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@syscliente.com' },
@@ -39,8 +39,8 @@ async function main() {
   ]);
 
   console.log('Seed completed!');
-  console.log(`Admin user: admin@syscliente.com / admin123`);
-  console.log(`Agent user: agente@syscliente.com / agent123`);
+  console.log(`Admin user: admin@syscliente.com / Admin@123`);
+  console.log(`Agent user: agente@syscliente.com / Agente@123`);
   console.log(`Tags created: ${tags.map((t) => t.name).join(', ')}`);
 }
 
